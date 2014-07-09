@@ -1,0 +1,22 @@
+{
+  "name": "Leaflet.GameController",
+  "main": "Leaflet.GameController.js",
+  "version": "0.0.1",
+  "homepage": "https://github.com/SINTEF-9012/Leaflet.GameController",
+  "authors": [
+    "Antoine Pultier <antoine.pultier@sintef.no>"
+  ],
+  "description": "Gamepads interactions for Leaflet",
+  "keywords": [
+    "leaflet",
+    "gamepad"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
