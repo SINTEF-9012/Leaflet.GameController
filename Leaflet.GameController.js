@@ -116,8 +116,8 @@ L.Map.GamepadController = L.Handler.extend({
 
 			if (!this._dragging) {
 				this._dragging = true;	
-				if (lapin._panAnim) {
-					lapin._panAnim.stop();
+				if (this._map._panAnim) {
+					this._map._panAnim.stop();
 				}
 				this._map.fire('movestart').fire('dragstart');
 			} else {
