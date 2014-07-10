@@ -1,10 +1,10 @@
 L.Map.GamepadController = L.Handler.extend({
 	options: {
-		analogicCoef: 1.3, // coefficient for converting the raw values in pixels 
-		speedLimit: 20, // speed limits in pixels
+		analogicCoef: 0.25, // coefficient for converting the raw values in pixels 
+		speedLimit: 15, // speed limits in pixels
 		zoomTrigger: 30, // The value for triggering a zoom
-		zoomReset: 5, // The value representing the end of a zoom
-		interval: 25 // requestAnimationFrame is maybe too much, so it's an old setInterval
+		zoomReset: 5, // The value representing the end of a zoom,
+		slowBoost: 3 // coefficient for boosting the slow movements
 	},
 
 	addHooks: function() {
@@ -14,39 +14,43 @@ L.Map.GamepadController = L.Handler.extend({
 
 		if (!this._onceLock) {
 			this._onceLock = true;
-			window.addEventListener('gamepadconnected', 
+			window.addEventListener('gamepadconnected',
 				L.bind(function() {
-					this._gamepadDetected = true;
-					if (!this._intervalId) {
-						this._intervalId = window.setInterval(
-							L.bind(this._gamepadLoop, this), this.options.interval);
-					}
-				}, this), true);
-		} else if (this._gamepadDetected && !this._intervalId) {
-			this._intervalId = window.setInterval(
-				L.bind(this._gamepadLoop, this), this.options.interval);
+				this._gamepadDetected = true;
+				if (this._enabled) {
+					this._gamepadRequest = L.Util.requestAnimFrame(this._gamepadLoop, this);
+				}
+			}, this));
+		} else if (this._gamepadDetected && !this._gamepadRequest) {
+			this._gamepadRequest = L.Util.requestAnimFrame(this._gamepadLoop, this);
 		}
 	},
 
 	removeHooks: function() {
-		if (this._intervalId) {
-			window.clearInterval(this._intervalId);
-			this._intervalId = 0;
+		if (this._gamepadRequest) {
+			L.Util.cancelAnimFrame(this._gamepadRequest);
+			this._gamepadRequest = null;
 		}
 	},
 
 	_gamepadLoop: function() {
 		var gamepads = navigator.getGamepads();
 
+		var found = false;
 		for (var i = 0, l = gamepads.length; i < l; ++i) {
 			if (this._gamepad(gamepads[i])) {
-				return;
+				found = true;
+				break;
 			}	
 		}
 		
-		if (this._dragging) {
+		if (!found && this._dragging) {
 			this._dragging = false;
 			this._map.fire('dragend').fire('moveend');
+		}
+
+		if (this._enabled) {
+			this._gamepadRequest = L.Util.requestAnimFrame(this._gamepadLoop, this);
 		}
 	},
 
@@ -89,12 +93,21 @@ L.Map.GamepadController = L.Handler.extend({
 		var analogicCoef = this.options.analogicCoef,
 			limitUp = this.options.speedLimit,
 			limitDown = -limitUp,
-			point = this._point;
+			point = this._point,
 
-		var v = Math.round(Math.max(Math.min(gamepad.axes[1]*analogicCoef,
-			limitUp), limitDown)),
-			vv = Math.round(Math.max(Math.min(gamepad.axes[0]*analogicCoef,
-				limitUp), limitDown));
+			ya = this.options.slowBoost,
+			xb = 10, yb = 1,
+			interpolation = ((yb - ya)/xb),
+
+			axe1 = gamepad.axes[0] * analogicCoef,
+			axe2 = gamepad.axes[1] * analogicCoef;
+
+		var v = Math.round(
+			Math.max(Math.min((ya + axe2 * interpolation) * axe2,
+				limitUp), limitDown)),
+			vv = Math.round(
+				Math.max(Math.min((ya + axe1 * interpolation) * axe1,
+					limitUp), limitDown));
 
 		// If the map is moved
 		if (Math.abs(v) > 1 && Math.abs(vv) > 1) {
