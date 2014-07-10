@@ -44,7 +44,7 @@ L.Map.GamepadController = L.Handler.extend({
 			}	
 		}
 		
-		if (!found && this._dragging) {
+		if (this._dragging && (!found || this._inZoom)) {
 			this._dragging = false;
 			this._map.fire('dragend').fire('moveend');
 		}
